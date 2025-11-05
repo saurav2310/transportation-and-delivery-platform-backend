@@ -86,3 +86,78 @@ Example:
 - Model: `Backend/models/user.model.js` (`hashPassword`, `generateAuthToken`)
 
 ---
+
+## POST /users/login
+
+Authenticate a user with email and password. Returns a JWT and the user object on success.
+
+Mounted at `/users` (see `Backend/routes/user.routes.js`).
+
+### Description
+
+- Validates request body and checks credentials.
+- Loads the user including the hashed password using `findOne({ email }).select("+password")`, compares the provided password with `comparePassword`, and generates a JWT on success.
+
+### Endpoint
+
+POST /users/login
+
+### Request body (application/json)
+
+- `email` (string, required, must be a valid email)
+- `password` (string, required, min length 6)
+
+Example:
+
+```json
+{
+  "email": "john.doe@example.com",
+  "password": "pa$$w0rd"
+}
+```
+
+### Validation rules
+
+- `email` — must be a valid email (route validator in `Backend/routes/user.routes.js`).
+- `password` — minimum length 6.
+
+### Responses
+
+- 200 OK
+  - Body:
+  ```json
+  {
+    "token": "<jwt-token>",
+    "user": {
+      "_id": "<userId>",
+      "fullname": { "firstname": "John", "lastname": "Doe" },
+      "email": "john.doe@example.com",
+      "socketId": null
+    }
+  }
+  ```
+  - Note: the current controller uses `select("+password")` to validate credentials; depending on how the controller is implemented it may include the hashed `password` field in the returned `user` object. It's recommended to remove the `password` field from the user before sending the response (e.g. `user.password = undefined`) to avoid leaking it.
+
+- 400 Bad Request
+  - Returned when request validation fails. Example:
+  ```json
+  {
+    "errors": [ { "msg": "Invalid Email", "param": "email" } ]
+  }
+  ```
+
+- 401 Unauthorized
+  - Returned when the email does not exist or the password is incorrect. Example:
+  ```json
+  { "message": "Invalid email or password" }
+  ```
+
+- 500 Internal Server Error
+  - For unexpected errors during DB access, password comparison, or token generation.
+
+### Implementation notes / references
+
+- Route: `Backend/routes/user.routes.js`
+- Controller: `Backend/controller/user.controller.js` (`loginUser`)
+- Model: `Backend/models/user.model.js` (uses `comparePassword`, `generateAuthToken`)
+
