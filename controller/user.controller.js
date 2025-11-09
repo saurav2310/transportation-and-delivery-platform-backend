@@ -48,8 +48,14 @@ module.exports.loginUser = async (req,res,next)=>{
         return res.status(401).json({message:'Invalid email or password'});
     }
 
+    const cookieOptions = {
+      httpOnly:true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    }
     const token = user.generateAuthToken();
-    res.cookie('token',token);
+    res.cookie('token',token,cookieOptions);
     res.status(200).json({token,user});
 
 }

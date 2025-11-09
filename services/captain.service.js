@@ -5,13 +5,15 @@ module.exports.createCaptain = async ({firstname,lastname,email,password,color,c
 if(!firstname||!lastname||!email||!password||!color||!capacity||!plate||!vehicleType){
     throw new Error('All fields are required');
 }
+
+const hashedPassword = await captainModel.prototype.hashPassword(password);
 const captain = captainModel.create({
     fullname:{
         firstname,
         lastname
     },
     email,
-    password,
+    password:hashedPassword,
     vehicle:{
         color,
         plate,

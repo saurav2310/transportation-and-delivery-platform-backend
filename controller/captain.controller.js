@@ -18,8 +18,7 @@ module.exports.registerCaptain = async (req,res,next)=>{
             return res.status(400).json({message:'Captain with this email already exists'});
         }
 
-            // The service (`caprain.service.js`) handles password hashing.
-            // Avoid hashing here (and avoid the incorrect use of `captainModel.prototype.hashPassword`).
+        
         const newCaptain = await captainService.createCaptain({
             firstname: fullname.firstname,
             lastname: fullname.lastname,
