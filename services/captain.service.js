@@ -1,5 +1,4 @@
 const captainModel = require('../models/captain.model');
-const bcrypt = require('bcrypt');
 
 module.exports.createCaptain = async ({firstname,lastname,email,password,color,capacity,plate, vehicleType})=>{
 
@@ -12,7 +11,7 @@ const captain = captainModel.create({
         lastname
     },
     email,
-    password:await bcrypt.hash(password,10),
+    password,
     vehicle:{
         color,
         plate,

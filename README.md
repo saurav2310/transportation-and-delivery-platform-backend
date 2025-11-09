@@ -321,7 +321,7 @@ Implementation notes / references
 
 - Route: `Backend/routes/captain.routes.js`
 - Controller: `Backend/controller/captain.controller.js` (`registerCaptain`)
-- Service: `Backend/services/caprain.service.js` (creates the captain record — note filename contains a typo: `caprain.service.js`)
+- Service: `Backend/services/captain.service.js` (creates the captain record )
 - Model: `Backend/models/captain.model.js` (`generateAuthToken`, `comparePassword`, `hashPassword`)
 
 Notes and recommendations
@@ -330,5 +330,121 @@ Notes and recommendations
 - The service hashes the password before saving (the controller also attempts to hash — review to avoid double hashing).
 - Consider returning the created captain object with the `password` field removed (the schema sets `password.select = false`, but ensure responses do not accidentally include it).
 - Add indexes on `email` and `vehicle.plate` for uniqueness and faster lookups.
+
+---
+
+### Captain auth & profile endpoints (examples)
+
+Below are JSON request and response examples for captain authentication and profile endpoints. The JSON examples include inline comments (JSONC-style) describing validation requirements and notes — the comments are for documentation purposes and are not valid JSON if copied directly into a JSON parser.
+
+#### POST /captains/login
+
+Request body (JSON with comments):
+
+```jsonc
+{
+  "email": "jane.rider@example.com", // required, must be a valid email
+  "password": "pa$$w0rd" // required, min length 6
+}
+```
+
+Successful response (200 OK):
+
+```jsonc
+{
+  "token": "<jwt-token>",
+  "captain": {
+    "_id": "<captainId>",
+    "fullname": { "firstname": "Jane", "lastname": "Rider" },
+    "email": "jane.rider@example.com",
+    "vehicle": { "color": "red", "plate": "ABC-123", "capacity": 2, "vehicleType": "car" },
+    "status": "inactive", // one of 'active', 'inactive', 'on-trip'
+    "socketId": null
+  }
+}
+```
+
+Error responses:
+
+```jsonc
+// 400 Bad Request - validation error
+{ "errors": [ { "msg": "Please provide a valid email address", "param": "email" } ] }
+
+// 401 Unauthorized - invalid credentials
+{ "message": "Invalid email or password" }
+```
+
+Notes:
+- The login controller must query the model including the password field: `captainModel.findOne({ email }).select('+password')` so `comparePassword` can access the hashed password.
+- Remove the `password` property from the captain object before returning it to the client (e.g. `captain.password = undefined`) to avoid leaking the hash.
+
+#### GET /captains/profile
+
+No request body. Authentication is required (cookie `token` or `Authorization: Bearer <token>`).
+
+Successful response (200 OK):
+
+```jsonc
+{
+  "captain": {
+    "_id": "<captainId>",
+    "fullname": { "firstname": "Jane", "lastname": "Rider" },
+    "email": "jane.rider@example.com",
+    "vehicle": { "color": "red", "plate": "ABC-123", "capacity": 2, "vehicleType": "car" },
+    "status": "inactive",
+    "socketId": null
+  }
+}
+```
+
+Error responses:
+
+```jsonc
+// 401 Unauthorized - missing/invalid token
+{ "message": "Authentication required" }
+
+// 500 Internal Server Error - token validation or DB lookup failure
+{ "message": "Internal server error" }
+```
+
+Notes:
+- This route uses `authMiddleware.authCaptain` to validate the token and attach the captain to `req.captain` (see `Backend/middlewares/auth.middleware.js`).
+
+#### GET /captains/logout
+
+No request body. Must be called by an authenticated captain.
+
+Successful response (200 OK):
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+Behavior and notes:
+- The logout handler clears the `token` cookie and stores the token in the `blacklistToken` collection so it can no longer be used.
+- If no token is present the controller currently still clears cookies and returns success; you may wish to return 400 when no token is available.
+- Example server-side steps:
+  1. Get token from `req.cookies.token` or `Authorization` header.
+  2. Save token to `blacklistToken` collection: `blacklistTokenModel.create({ token })`.
+  3. Clear cookie: `res.clearCookie('token')` and return 200.
+
+---
+
+If you'd like, I can also:
+- Convert these JSONC examples into separate files under a `docs/` folder for machine-readable examples.
+- Add curl/PowerShell samples for each endpoint.
+- Implement a small test to verify login/profile/logout flows for captains.
+
+
+
+
+
+
+
+
+
+
 
 
